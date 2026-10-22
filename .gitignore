@@ -1,0 +1,3 @@
+/target
+/typst/lecfig/lecfig.wasm
+*.pdf

@@ -1,0 +1,29 @@
+{
+  "kind": "circuit",
+  "version": 1,
+  "flavor": "network",
+  "elements": [
+    {"id": "v1", "type": "vsource", "from": [0, 0], "to": [0, 3], "u": "U_0"},
+    {"id": "r1", "type": "resistor", "from": [0, 3], "to": [3, 3], "label": "R_1", "i": "I_1"},
+    {"id": "c1", "type": "capacitor", "from": [3, 3], "to": [3, 0], "label": "C", "u": {"content": "u_C", "anchor": "south"}},
+    {"id": "n1", "type": "node", "at": [3, 3]},
+    {"id": "a", "type": "terminal", "at": [5, 3], "label": "a"},
+    {"id": "b", "type": "terminal", "at": [5, 0], "label": "b"},
+    {"id": "gnd", "type": "ground", "at": [0, 0]},
+    {"id": "op1", "type": "opamp", "at": [8, 1.5]},
+    {"id": "op2", "type": "opamp", "at": [8, -1.5], "flip": true},
+    {"id": "g1", "type": "land", "at": [11, 1.5], "inputs": 3},
+    {"id": "g2", "type": "lnot", "at": [11, -1.5], "rot": 90},
+    {"id": "t1", "type": "npn", "at": [13, 1.5], "flip": true}
+  ],
+  "wires": [
+    {"points": ["c1.out", "gnd"]},
+    {"points": ["n1", "a"], "i": "I_a"},
+    {"points": ["op1.out", [9.5, 1.5], [9.5, 1.9], "g1.in1"]}
+  ],
+  "annotations": [
+    {"type": "voltage", "from": "a", "to": "b", "content": "U_(a b)", "bend": 0.6},
+    {"type": "callout", "to": "r1.out", "rel": [1, 1], "content": "R_1 = 0"},
+    {"type": "text", "at": [1.5, -1], "content": "\"RC\" = tau"}
+  ]
+}

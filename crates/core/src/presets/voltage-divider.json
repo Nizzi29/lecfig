@@ -1,0 +1,22 @@
+{
+  "kind": "circuit",
+  "version": 1,
+  "flavor": "network",
+  "elements": [
+    {"id": "v1", "type": "vsource", "from": [0, 0], "to": [0, 4], "u": "U_0"},
+    {"id": "r1", "type": "resistor", "from": [3, 4], "to": [3, 2], "label": "R_1"},
+    {"id": "r2", "type": "resistor", "from": [3, 2], "to": [3, 0], "label": "R_2"},
+    {"id": "n1", "type": "node", "at": [3, 2]},
+    {"id": "n2", "type": "node", "at": [3, 0]},
+    {"id": "a", "type": "terminal", "at": [5, 2]},
+    {"id": "b", "type": "terminal", "at": [5, 0]}
+  ],
+  "wires": [
+    {"points": ["v1.out", "r1.in"]},
+    {"points": ["v1.in", "b"]},
+    {"points": ["n1", "a"]}
+  ],
+  "annotations": [
+    {"type": "voltage", "from": "a", "to": "b", "content": "U_2", "bend": 0.6}
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "kind": "block",
+  "version": 1,
+  "style": {"blocks": "time"},
+  "nodes": [
+    {"id": "u", "type": "io", "at": [0, 0], "label": "F"},
+    {"id": "s", "type": "sum", "at": [1, 0]},
+    {"id": "k", "type": "gain", "at": [2, 0], "label": "1/m"},
+    {"id": "i1", "type": "integrator", "at": [3, 0]},
+    {"id": "b1", "type": "branch", "at": [4, 0]},
+    {"id": "i2", "type": "integrator", "at": [5, 0]},
+    {"id": "b2", "type": "branch", "at": [6, 0]},
+    {"id": "y", "type": "io", "at": [7, 0], "label": "y"},
+    {"id": "kd", "type": "gain", "at": [4, 1], "label": "d"},
+    {"id": "kc", "type": "gain", "at": [6, 2], "label": "c"}
+  ],
+  "edges": [
+    {"from": "u", "to": "s", "sign": "+"},
+    {"from": "s", "to": "k"},
+    {"from": "k", "to": "i1", "label": "dot.double(y)"},
+    {"from": "i1", "to": "b1", "label": "dot(y)"},
+    {"from": "b1", "to": "i2"},
+    {"from": "i2", "to": "b2"},
+    {"from": "b2", "to": "y"},
+    {"from": "b1", "to": "kd"},
+    {"from": "kd", "to": "s", "bends": [[1, 1]], "sign": "-"},
+    {"from": "b2", "to": "kc"},
+    {"from": "kc", "to": "s", "bends": [[1, 2]], "sign": "-"}
+  ]
+}

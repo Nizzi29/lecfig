@@ -1,0 +1,23 @@
+{
+  "kind": "circuit",
+  "version": 1,
+  "flavor": "schematic",
+  "elements": [
+    {"id": "e", "type": "terminal", "at": [-0.5, 0.45]},
+    {"id": "r1", "type": "resistor", "from": [0, 0.45], "to": [2, 0.45], "label": "R_1"},
+    {"id": "r2", "type": "resistor", "from": [2.5, 2], "to": [5.5, 2], "label": "R_2"},
+    {"id": "op", "type": "opamp", "at": [4, 0]},
+    {"id": "n1", "type": "node", "at": [2.5, 0.45]},
+    {"id": "n2", "type": "node", "at": [5.5, 0]},
+    {"id": "gnd", "type": "ground", "at": [2.5, -1.2]},
+    {"id": "a", "type": "terminal", "at": [6.5, 0]}
+  ],
+  "wires": [
+    {"points": ["e", "r1.in"]},
+    {"points": ["r1.out", "op.minus"]},
+    {"points": ["n1", "r2.in"]},
+    {"points": ["r2.out", "n2"]},
+    {"points": ["op.out", "a"]},
+    {"points": ["op.plus", [2.5, -0.45], "gnd"]}
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "kind": "circuit",
+  "version": 1,
+  "flavor": "network",
+  "elements": [
+    {"id": "e1", "type": "terminal", "at": [0, 3]},
+    {"id": "e2", "type": "terminal", "at": [0, 0]},
+    {"id": "r1", "type": "resistor", "from": [1, 3], "to": [4, 3], "label": "R"},
+    {"id": "c1", "type": "capacitor", "from": [5, 3], "to": [5, 0], "label": "C"},
+    {"id": "n1", "type": "node", "at": [5, 3]},
+    {"id": "n2", "type": "node", "at": [5, 0]},
+    {"id": "a1", "type": "terminal", "at": [7, 3]},
+    {"id": "a2", "type": "terminal", "at": [7, 0]}
+  ],
+  "wires": [
+    {"points": ["e1", "r1.in"]},
+    {"points": ["r1.out", "a1"]},
+    {"points": ["e2", "a2"]}
+  ],
+  "annotations": [
+    {"type": "voltage", "from": "e1", "to": "e2", "content": "u_e", "bend": -0.6},
+    {"type": "voltage", "from": "a1", "to": "a2", "content": "u_a", "bend": 0.6}
+  ]
+}
