@@ -5,6 +5,7 @@
 mod block;
 mod circuit;
 pub mod edit;
+mod hints;
 mod magnetic;
 mod menu;
 
@@ -140,7 +141,8 @@ pub struct App {
     pub error: Option<String>,
     pub message: String,
     saved: String,
-    help: bool,
+    /// The side panel with the keys for the current mode (`?` toggles).
+    show_keys: bool,
     /// Mouse drag that moves the selection: (start point, original figure).
     drag: Option<(Pt, Figure)>,
     /// Last pointer position seen while placing, so only real mouse moves move the part.
@@ -182,9 +184,9 @@ impl App {
             shown: None,
             rendered_json: String::new(),
             error: None,
-            message: "press ? for keys".into(),
+            message: String::new(),
             saved,
-            help: false,
+            show_keys: true,
             drag: None,
             last_hover: None,
             script: std::env::var("LECFIG_SCREENSHOT")
@@ -635,13 +637,12 @@ impl App {
         }
         if key == Some(Key::Escape) && matches!(self.mode, Mode::Normal) {
             self.sel.clear();
-            self.help = false;
             return;
         }
         if matches!(self.mode, Mode::Normal) {
             match ch {
                 Some('?') => {
-                    self.help = !self.help;
+                    self.show_keys = !self.show_keys;
                     return;
                 }
                 Some('u') => return self.undo(),
@@ -779,6 +780,9 @@ impl eframe::App for App {
         self.handle_events(&ctx);
 
         egui::Panel::bottom("status").show(ui, |ui| self.status_bar(ui));
+        if self.show_keys {
+            egui::Panel::right("keys").resizable(false).exact_size(310.0).show(ui, |ui| self.keys_panel(ui));
+        }
         egui::CentralPanel::default().frame(egui::Frame::NONE.fill(Color32::from_gray(236))).show(ui, |ui| {
             let (canvas, response) = ui.allocate_exact_size(ui.available_size(), Sense::click_and_drag());
             self.canvas(ui, canvas, &response);
@@ -1076,11 +1080,40 @@ impl App {
             }
         }
 
-        if self.help {
-            egui::Window::new("keys").anchor(egui::Align2::RIGHT_TOP, Vec2::new(-12.0, 12.0)).collapsible(false).show(ctx, |ui| {
-                ui.label(egui::RichText::new(HELP).monospace().size(12.0));
-            });
+    }
+}
+
+impl App {
+    /// The keys that work right now, for the current mode and selection.
+    fn keys_panel(&self, ui: &mut egui::Ui) {
+        let h = hints::hints(self);
+        ui.add_space(8.0);
+        ui.label(egui::RichText::new(&h.title).strong().size(15.0).color(ACCENT));
+        if let Some(n) = &h.note {
+            ui.add(egui::Label::new(egui::RichText::new(n).weak().size(12.0)).wrap());
         }
+        egui::ScrollArea::vertical().show(ui, |ui| {
+            ui.add_space(6.0);
+            // One grid for all groups, so the descriptions line up.
+            egui::Grid::new("keys").num_columns(2).spacing([8.0, 4.0]).min_col_width(0.0).show(ui, |ui| {
+                for (name, keys) in &h.groups {
+                    if !name.is_empty() {
+                        ui.label(egui::RichText::new(name.to_uppercase()).size(10.5).strong().weak());
+                        ui.end_row();
+                    }
+                    for (k, t) in keys {
+                        egui::Frame::NONE
+                            .fill(ui.visuals().widgets.inactive.bg_fill)
+                            .corner_radius(3.0)
+                            .inner_margin(egui::Margin::symmetric(5, 1))
+                            .show(ui, |ui| ui.label(egui::RichText::new(*k).monospace().strong()));
+                        ui.add(egui::Label::new(t.as_str()).wrap());
+                        ui.end_row();
+                    }
+                }
+            });
+            ui.add_space(8.0);
+        });
     }
 }
 
@@ -1089,41 +1122,6 @@ fn fmt(x: f64) -> String {
     if r.fract() == 0.0 { format!("{}", r as i64) } else { format!("{r}") }
 }
 
-const HELP: &str = "\
-h j k l / arrows  move cursor (H J K L: 5 steps)
-space             part picker (flavor first, then submenus);
-                  the part follows the cursor (hjkl or mouse),
-                  r / R turns it, Enter or click puts it down,
-                  Esc drops it
-.                 pick up the last part again
-v / click         select · x add to selection · Esc clear
-m                 move selection (hjkl, Enter drops, Esc cancels)
-drag              move selection with the mouse
-r / R             rotate ccw / cw     F flip / reverse
-+ / -             longer / shorter part, taller / lower block
-> < ] [ } {       block: wider / narrower, right pins ±1,
-                  left pins ±1
-d / Del           delete              y / p  copy / paste
-c                 change label (Typst math, live)
-w                 wire: hjkl + Enter bends, Enter on a pin
-                  or the same point ends, o toggles corner
-a                 annotate: u voltage, i current, n node,
-                  t terminal, . text, c callout
-e                 edit the generator expression, regenerate
-space P           presets
-g                 half-unit grid on/off
-u / U             undo / redo (also Ctrl+Z / Ctrl+Y)
-z                 reset view · wheel zoom · right-drag pan
-q                 quit (every change is already saved;
-                  an empty figure's file is deleted)
-
-block diagrams: space adds a node, w draws a line from
-the node at the cursor (Enter on empty cells bends),
-+ / - / 0 set the sign at a selected line's arrow head,
-Tab selects the next line, S switches ∫ ↔ 1/s
-
-magnetic: Tab cycles items, F flips sense/direction,
-+ / - turns or lane, m + hjkl moves, c edits the label";
 
 #[cfg(test)]
 mod tests {
@@ -1219,6 +1217,22 @@ mod tests {
         let Figure::Circuit(c) = &a.fig else { panic!() };
         assert_eq!(c.elements[0].rot, 90, "r turns a point part while placing");
         assert_eq!(a.undo.len(), 1);
+    }
+
+    #[test]
+    fn hints_follow_mode_and_selection() {
+        let (mut a, ctx) = app(Figure::Circuit(Circuit::default()));
+        assert_eq!(hints::hints(&a).title, "Normal");
+        keys(&mut a, &ctx, " r");
+        assert_eq!(hints::hints(&a).title, "Placing: resistor");
+        keys(&mut a, &ctx, "<Enter>");
+        let h = hints::hints(&a);
+        assert!(h.title.starts_with("Selected: resistor"), "{}", h.title);
+        assert!(h.groups.iter().flat_map(|(_, k)| k).any(|(k, _)| *k == "+ / -"));
+        keys(&mut a, &ctx, "<Esc>w");
+        assert_eq!(hints::hints(&a).title, "Drawing a wire");
+        keys(&mut a, &ctx, "<Esc> b<Enter>");
+        assert_eq!(hints::hints(&a).title, "Typing a label");
     }
 
     #[test]

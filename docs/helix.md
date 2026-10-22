@@ -32,6 +32,8 @@ Generic boxes (converters, subsystems): `space b` places a labeled block. Labels
 
 If the editor cannot start, Helix shows the reason in its status line; the editor's own output is in `~/.local/state/lecfig/editor.log`.
 
+The panel on the right of the editor always lists the keys that work right now (for the current mode and selection); `?` hides it.
+
 The editor runs in its own window and saves on every change; the tinymist preview updates as you draw. Close it with `q`; a figure left empty is deleted (remove its `#fig(…)` line too).
 
 Generators work without the editor, straight in the notes:

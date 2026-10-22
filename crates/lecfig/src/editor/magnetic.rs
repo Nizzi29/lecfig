@@ -12,7 +12,7 @@ use super::edit::Item;
 use super::{ACCENT, App, Mode, Target};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum MagItem {
+pub(super) enum MagItem {
     Core,
     Winding(usize),
     Flux(usize),
@@ -129,7 +129,7 @@ fn position(m: &Magnetic, it: MagItem) -> Pt {
     }
 }
 
-fn selected(app: &App) -> Option<MagItem> {
+pub(super) fn selected(app: &App) -> Option<MagItem> {
     match app.sel.first() {
         Some(Item::Element(k)) => items(mag(app)).get(*k).copied(),
         _ => None,
