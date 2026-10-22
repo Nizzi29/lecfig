@@ -30,6 +30,8 @@ Generic boxes (converters, subsystems): `space b` places a labeled block. Labels
 
 Generic boxes (converters, subsystems): `space b` places a labeled block. Labels are Typst math, so text goes in quotes and `\` breaks lines: `"AC/DC"`, `"DC" \ "DC"`. With the block selected, `+`/`-` and `>`/`<` resize it, `]`/`[` and `}`/`{` add or remove pins on the right and left.
 
+If the editor cannot start, Helix shows the reason in its status line; the editor's own output is in `~/.local/state/lecfig/editor.log`.
+
 The editor runs in its own window and saves on every change; the tinymist preview updates as you draw. Close it with `q`; a figure left empty is deleted (remove its `#fig(…)` line too).
 
 Generators work without the editor, straight in the notes:

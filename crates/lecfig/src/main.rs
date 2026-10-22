@@ -54,7 +54,7 @@ enum Cmd {
         #[arg(long, conflicts_with_all = ["magnetic", "preset"])]
         logic: Option<String>,
         /// Transformer or magnetic circuit, e.g. "N_1 : N_2".
-        #[arg(long, conflicts_with_all = ["preset", "loop"])]
+        #[arg(long, conflicts_with_all = ["preset", "loop_"])]
         magnetic: Option<String>,
         /// Control loop from block algebra, e.g. "feedback(C G, H)".
         #[arg(long = "loop", conflicts_with = "preset")]
@@ -201,6 +201,7 @@ fn new(
     force: bool,
 ) -> Result<(), String> {
     let root = course::root_for(for_file)?;
+    check_imports(for_file)?;
     let name = name.unwrap_or_else(|| course::next_name(&root));
     course::check_name(&name)?;
     let path = course::figs_dir(&root).join(format!("{name}.json"));
@@ -238,18 +239,65 @@ fn new(
     Ok(())
 }
 
+/// Where the detached editor writes what it prints (errors, panics).
+fn editor_log() -> PathBuf {
+    let base = std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".local/state"));
+    base.join("lecfig").join("editor.log")
+}
+
 /// Starts the editor as its own process, detached, so the caller (Helix) is not blocked.
+/// If it dies right away (no display, bad figure, …) the error is returned, so Helix
+/// shows it instead of a silent "Command run".
 fn spawn_editor(path: &Path) -> Result<(), String> {
     use std::process::{Command, Stdio};
+    if std::env::var_os("WAYLAND_DISPLAY").is_none() && std::env::var_os("DISPLAY").is_none() {
+        return Err("no graphical session here (WAYLAND_DISPLAY and DISPLAY are unset); \
+             inside tmux/zellij the editor cannot open a window"
+            .into());
+    }
+    let log = editor_log();
+    if let Some(dir) = log.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let out = std::fs::File::create(&log).map_err(|e| format!("{}: {e}", log.display()))?;
+    let err = out.try_clone().map_err(|e| e.to_string())?;
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     let mut cmd = Command::new(exe);
-    cmd.arg("editor").arg(path).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null());
+    cmd.arg("editor").arg(path).stdin(Stdio::null()).stdout(out).stderr(err);
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
         cmd.process_group(0);
     }
-    cmd.spawn().map(|_| ()).map_err(|e| format!("could not start the editor: {e}"))
+    let mut child = cmd.spawn().map_err(|e| format!("could not start the editor: {e}"))?;
+    // Window creation fails within a few hundred milliseconds if it fails at all.
+    for _ in 0..8 {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        if let Ok(Some(status)) = child.try_wait() {
+            if status.success() {
+                return Ok(());
+            }
+            let text = std::fs::read_to_string(&log).unwrap_or_default();
+            let last: Vec<&str> = text.lines().rev().take(3).collect::<Vec<_>>().into_iter().rev().collect();
+            return Err(format!("the editor stopped right away: {} (full log: {})", last.join(" | "), log.display()));
+        }
+    }
+    Ok(())
+}
+
+/// Lecture files must import the course template, or `#fig("…")` is unknown to Typst.
+fn check_imports(for_file: Option<&Path>) -> Result<(), String> {
+    let Some(file) = for_file else { return Ok(()) };
+    let Ok(text) = std::fs::read_to_string(file) else { return Ok(()) };
+    if text.contains("template.typ") || text.contains("#let fig(") {
+        return Ok(());
+    }
+    Err(format!(
+        "{} does not import the course template, so #fig would be unknown; add `#import \"template.typ\": *` near the top and try again",
+        file.display()
+    ))
 }
 
 fn png(figure: &Path, out: &Path) -> Result<(), String> {
@@ -311,6 +359,23 @@ pub fn write_png(path: &Path, w: u32, h: u32, rgba: &[u8]) -> Result<(), String>
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn command_line_definition_is_consistent() {
+        use clap::CommandFactory;
+        super::Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn lecture_without_template_import_is_refused() {
+        let dir = std::env::temp_dir().join("lecfig-import-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("l.typ");
+        std::fs::write(&f, "= A\n").unwrap();
+        assert!(super::check_imports(Some(&f)).is_err());
+        std::fs::write(&f, "#import \"template.typ\": *\n").unwrap();
+        assert!(super::check_imports(Some(&f)).is_ok());
+    }
+
     #[test]
     fn figure_on_a_line() {
         let dir = std::env::temp_dir().join("lecfig-line-test");
