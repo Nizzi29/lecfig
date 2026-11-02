@@ -1107,6 +1107,21 @@ impl App {
             return;
         }
         self.apply_text(&target, &text);
+        // "+" or "-" typed as the name of a line into a sum point is meant as its sign.
+        if let (Target::BlockEdge(i), Figure::Block(b)) = (&target, &mut self.fig) {
+            let into_sum = b.edges.get(*i).is_some_and(|e| b.nodes.iter().any(|n| n.id == e.to && n.kind == "sum"));
+            let sign = match text.trim() {
+                "+" => Some("+"),
+                "-" | "−" => Some("-"),
+                _ => None,
+            };
+            if let (true, Some(sign)) = (into_sum, sign) {
+                let e = &mut b.edges[*i];
+                e.sign = sign.into();
+                e.label.clear();
+                self.message = format!("set as the sign at the sum point ({sign})");
+            }
+        }
         if original != self.fig {
             let now = std::mem::replace(&mut self.fig, original);
             self.checkpoint();
@@ -1320,6 +1335,23 @@ mod tests {
         keys(&mut a, &ctx, "<Esc>hwjj<Enter>");
         let Figure::Block(b) = &a.fig else { panic!() };
         assert_eq!(b.edges.len(), 2, "no node below yet: Enter there makes a bend");
+    }
+
+    #[test]
+    fn minus_as_line_name_into_a_sum_becomes_the_sign() {
+        let fig = Figure::from_json(r#"{"kind": "block", "version": 2, "nodes": [
+            {"id": "k", "type": "gain", "at": [0, 1], "label": "K"},
+            {"id": "s", "type": "sum", "at": [0, 0]}],
+            "edges": [{"from": "k", "to": "s"}]}"#).unwrap();
+        let (mut a, ctx) = app(fig);
+        a.sel = vec![Item::Wire(0)];
+        keys(&mut a, &ctx, "c");
+        if let Mode::Insert { text, .. } = &mut a.mode {
+            *text = "-".into();
+        }
+        keys(&mut a, &ctx, "<Enter>");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        assert_eq!((b.edges[0].sign.as_str(), b.edges[0].label.as_str()), ("-", ""));
     }
 
     #[test]

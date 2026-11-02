@@ -353,8 +353,8 @@ fn block(app: &App, b: &Block) -> Hints {
                 groups.push((
                     "line under the cursor",
                     vec![
-                        ("c", if e.label.is_empty() { "name the signal".into() } else { format!("rename the signal ({})", e.label) }),
-                        ("+ / -", "sign at its arrow head".into()),
+                        ("c", if e.label.is_empty() { "name the signal (e, u(t) …)".into() } else { format!("rename the signal ({})", e.label) }),
+                        ("+ / -", "sign at the sum point (press directly, no c)".into()),
                         ("0", "no sign".into()),
                         ("d", "delete it".into()),
                         ("v", "select it".into()),
