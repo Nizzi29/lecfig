@@ -19,9 +19,16 @@
 /// Schema version reported by the Rust plugin; proves the plugin loads.
 #let schema-version() = int(str(_plugin.schema_version()))
 
-/// Draws figure data: a dictionary as read by `json(...)` from a figure file.
-/// `editor: true` adds invisible markers the lecfig editor uses to map pixels.
-#let render(data, editor: false) = {
+/// Scales `body` down to the space it gets (never up), keeping its proportions, so a
+/// wide figure fits the text width and a tall one the page.
+#let fit-space(body) = layout(size => {
+  let m = measure(body)
+  if m.width == 0pt or m.height == 0pt { return body }
+  let k = calc.min(1, size.width / m.width, size.height / m.height)
+  if k < 1 { scale(k * 100%, reflow: true, body) } else { body }
+})
+
+#let _draw(data, editor: false) = {
   let empty = (
     data.at("elements", default: ()).len() + data.at("wires", default: ()).len() + data.at("nodes", default: ()).len()
       + data.at("annotations", default: ()).len()
@@ -39,6 +46,14 @@
   } else {
     panic("lecfig: unknown figure kind '" + data.kind + "'")
   }
+}
+
+/// Draws figure data: a dictionary as read by `json(...)` from a figure file.
+/// Too large figures are scaled down to fit (`fit: false` keeps the natural size).
+/// `editor: true` adds invisible markers the lecfig editor uses to map pixels; the
+/// editor always gets the natural size.
+#let render(data, editor: false, fit: true) = {
+  if editor or not fit { _draw(data, editor: editor) } else { fit-space(_draw(data)) }
 }
 
 /// Runs a generator and returns the figure data (not drawn), e.g. to inspect it.
