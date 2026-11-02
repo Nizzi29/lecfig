@@ -593,6 +593,12 @@ impl App {
 
     fn key(&mut self, ch: Option<char>, key: Option<Key>, mods: egui::Modifiers, ctx: &egui::Context) {
         // Shortcuts that work in every mode.
+        if matches!(self.mode, Mode::Insert { .. }) {
+            if matches!(key, Some(Key::Enter | Key::Escape)) {
+                self.finish_insert();
+            }
+            return;
+        }
         if mods.command {
             self.cancel_place();
             match key {
@@ -1043,7 +1049,7 @@ impl App {
         };
         if let Mode::Insert { target, text, focus, .. } = &mut self.mode {
             let title = match target {
-                Target::Expr => "expression (Enter regenerates)",
+                Target::Expr => "expression (Enter or Esc regenerates)",
                 Target::U(_) => "voltage (Typst math)",
                 Target::I(_) | Target::WireI(_) => "current (Typst math)",
                 _ if markup => "label (Typst text, $math$)",
@@ -1054,7 +1060,13 @@ impl App {
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    let out = egui::TextEdit::singleline(text).desired_width(360.0).font(egui::TextStyle::Monospace).show(ui);
+                    // Shift+Enter adds a line; Enter (and Esc) keep the text.
+                    let out = egui::TextEdit::multiline(text)
+                        .desired_width(360.0)
+                        .desired_rows(1)
+                        .font(egui::TextStyle::Monospace)
+                        .return_key(egui::KeyboardShortcut::new(egui::Modifiers::SHIFT, Key::Enter))
+                        .show(ui);
                     if *focus {
                         // First frame: focus and select everything, so typing replaces a default
                         // label. Keys of this frame (e.g. the Enter that placed the part) are not
@@ -1068,10 +1080,9 @@ impl App {
                         state.cursor.set_char_range(Some(all));
                         state.store(ui.ctx(), out.response.id);
                         *focus = false;
-                    } else if ui.input(|i| i.key_pressed(Key::Enter)) {
+                    } else if ui.input(|i| (i.key_pressed(Key::Enter) && !i.modifiers.shift) || i.key_pressed(Key::Escape)) {
+                        // Esc keeps the edit too; u undoes it.
                         finish = Some(true);
-                    } else if ui.input(|i| i.key_pressed(Key::Escape)) {
-                        finish = Some(false);
                     }
                 });
         }
@@ -1080,32 +1091,32 @@ impl App {
             if target != Target::Expr {
                 self.apply_text(&target, &text);
             }
-            match finish {
-                Some(true) => {
-                    let Mode::Insert { original, .. } = std::mem::replace(&mut self.mode, Mode::Normal) else { unreachable!() };
-                    if target == Target::Expr {
-                        self.fig = original.clone();
-                        self.checkpoint();
-                        if let Err(e) = self.regenerate(&text) {
-                            self.undo.pop();
-                            self.message = e;
-                        } else {
-                            self.message = "regenerated".into();
-                        }
-                    } else if original != self.fig {
-                        let now = std::mem::replace(&mut self.fig, original);
-                        self.checkpoint();
-                        self.fig = now;
-                    }
-                }
-                Some(false) => {
-                    let Mode::Insert { original, .. } = std::mem::replace(&mut self.mode, Mode::Normal) else { unreachable!() };
-                    self.fig = original;
-                }
-                None => {}
+            if finish.is_some() {
+                self.finish_insert();
             }
         }
+    }
 
+    /// Keeps what was typed (Enter or Esc): one undo step, or a regeneration.
+    fn finish_insert(&mut self) {
+        let Mode::Insert { target, text, original, .. } = std::mem::replace(&mut self.mode, Mode::Normal) else { return };
+        if target == Target::Expr {
+            self.fig = original.clone();
+            self.checkpoint();
+            if let Err(e) = self.regenerate(&text) {
+                self.undo.pop();
+                self.message = e;
+            } else {
+                self.message = "regenerated".into();
+            }
+            return;
+        }
+        self.apply_text(&target, &text);
+        if original != self.fig {
+            let now = std::mem::replace(&mut self.fig, original);
+            self.checkpoint();
+            self.fig = now;
+        }
     }
 }
 
@@ -1216,7 +1227,7 @@ mod tests {
     #[test]
     fn block_chain_connects() {
         let (mut a, ctx) = app(Figure::Block(Block::default()));
-        keys(&mut a, &ctx, " e<Enter> s<Enter> k<Enter> i<Enter> e<Enter>");
+        keys(&mut a, &ctx, " e<Enter><Enter> s<Enter> k<Enter><Esc> i<Enter> e<Enter><Enter>");
         let Figure::Block(b) = &a.fig else { panic!() };
         assert_eq!(b.nodes.len(), 5);
         assert_eq!(b.edges.len(), 4);
@@ -1266,7 +1277,7 @@ mod tests {
     fn lines_under_the_cursor_and_per_node() {
         let (mut a, ctx) = app(Figure::Block(Block::default()));
         // Two blocks, then a feedback line from the second back to the first, one row down.
-        keys(&mut a, &ctx, " k<Enter> k<Enter>hwj<Enter>h<Enter>k<Enter>");
+        keys(&mut a, &ctx, " k<Enter><Enter> k<Enter><Enter>hwj<Enter>h<Enter>k<Enter>");
         let Figure::Block(b) = &a.fig else { panic!() };
         assert_eq!(b.edges.len(), 2);
         // Cursor onto the feedback line's lower row: c edits that line.
@@ -1292,6 +1303,22 @@ mod tests {
         assert_eq!(a.sel, vec![Item::Wire(0)]);
         keys(&mut a, &ctx, "<Tab>");
         assert_eq!(a.sel, vec![Item::Wire(1)]);
+    }
+
+    #[test]
+    fn esc_keeps_the_label_and_u_undoes_it() {
+        let (mut a, ctx) = app(Figure::Block(Block::default()));
+        keys(&mut a, &ctx, " e<Enter>");
+        assert!(matches!(a.mode, Mode::Insert { .. }), "input/output asks for its label");
+        if let Mode::Insert { text, .. } = &mut a.mode {
+            *text = "Führungsgrößen\n• Soll-Lage".into();
+        }
+        keys(&mut a, &ctx, "<Esc>");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        assert_eq!(b.nodes[0].label, "Führungsgrößen\n• Soll-Lage");
+        keys(&mut a, &ctx, "u");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        assert_eq!(b.nodes[0].label, "$u$", "u goes back to the default label");
     }
 
     #[test]

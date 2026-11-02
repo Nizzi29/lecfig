@@ -1,6 +1,6 @@
 // Renders block diagrams (kind "block") with fletcher. The ONLY file that calls fletcher.
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, edge, node
-#import "common.typ": lbl
+#import "common.typ": lbl, txt
 
 // Content of a node; integrators and empty transfer functions get their symbol.
 #let node-body(n, laplace) = {
@@ -32,10 +32,10 @@
       items.push(node(pos, mark(n, []), shape: circle, radius: 1.6pt, fill: black, stroke: none, name: name))
     } else if t == "box" {
       // Generic block: the label is Typst markup (text, $math$).
-      items.push(node(pos, mark(n, eval(n.at("label", default: ""), mode: "markup")), shape: rect, name: name))
+      items.push(node(pos, mark(n, txt(n.at("label", default: ""))), shape: rect, name: name))
     } else if t == "io" {
       // Multi-line labels (lists) read best left-aligned.
-      let body = if io-markup { align(left, eval(n.at("label", default: ""), mode: "markup")) } else { node-body(n, laplace) }
+      let body = if io-markup { align(left, txt(n.at("label", default: ""))) } else { node-body(n, laplace) }
       items.push(node(pos, mark(n, body), stroke: none, name: name))
     } else {
       // gain, integrator, tf, function

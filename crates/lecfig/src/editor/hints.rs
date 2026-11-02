@@ -128,7 +128,7 @@ fn insert(app: &App, target: &Target) -> Hints {
                 title: "Typing a block label".into(),
                 note: Some("Typst markup, shown live: plain text, math between dollars".into()),
                 groups: vec![
-                    g("keys", &[("Enter", "keep it"), ("Esc", "undo the change")]),
+                    g("keys", &[("Enter / Esc", "keep it (u undoes it)"), ("Shift+Enter", "new line")]),
                     g(
                         "Typst markup",
                         &[
@@ -136,7 +136,7 @@ fn insert(app: &App, target: &Target) -> Hints {
                             ("$G(s)$", "math"),
                             ("Führungsgröße $w$", "text with math"),
                             ("• Soll-Lage", "bullet point"),
-                            ("\\", "line break: Aktuator \\ (Motor)"),
+                            ("Shift+Enter", "line break (or \\ in the text)"),
                             ("*fett* _kursiv_", "bold / italic"),
                         ],
                     ),
@@ -148,21 +148,21 @@ fn insert(app: &App, target: &Target) -> Hints {
         return Hints {
             title: "Editing the expression".into(),
             note: Some("the figure is regenerated from it; changes made by hand are lost".into()),
-            groups: vec![g("", &[("Enter", "regenerate"), ("Esc", "cancel")])],
+            groups: vec![g("", &[("Enter / Esc", "regenerate (u undoes it)")])],
         };
     }
     Hints {
         title: "Typing a label".into(),
         note: Some("Typst math, shown live in the figure".into()),
         groups: vec![
-            g("keys", &[("Enter", "keep it"), ("Esc", "undo the change"), ("empty + Enter", "remove an arrow label")]),
+            g("keys", &[("Enter / Esc", "keep it (u undoes it)"), ("Shift+Enter", "new line"), ("empty + Enter", "remove an arrow label")]),
             g(
                 "Typst math",
                 &[
                     ("R_1", "subscript (R_(a b) for longer ones)"),
                     ("x^2", "superscript"),
                     ("\"AC/DC\"", "plain text in quotes"),
-                    ("\\", "line break: \"DC\" \\ \"DC\""),
+                    ("Shift+Enter", "line break (or \\ in the text)"),
                     ("alpha, Phi", "Greek letters by name"),
                     ("dot(x), x'", "derivatives"),
                     ("underline(I)", "phasor / complex quantity"),

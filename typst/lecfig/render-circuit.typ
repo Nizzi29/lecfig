@@ -1,6 +1,6 @@
 // Renders circuit figures (kind "circuit") with zap. The ONLY file that calls zap.
 #import "@preview/zap:0.6.0"
-#import "common.typ": callout, cetz, current-arrow, lbl, vec, voltage-arrow
+#import "common.typ": breaks, callout, cetz, current-arrow, lbl, vec, voltage-arrow
 
 // Parts drawn between two points (pins "in" and "out").
 #let two-terminal = (
@@ -87,7 +87,7 @@
     let (a, b) = (place((-w / 2, -h / 2)), place((w / 2, h / 2)))
     rect(a, b, stroke: 0.8pt)
     if e.at("label", default: "") != "" {
-      content(at, math.equation(block: true, eval(e.label, mode: "math")))
+      content(at, math.equation(block: true, eval(breaks(e.label), mode: "math")))
     }
     for (k, y) in side-pins(nin, h).enumerate() { anchor("in" + str(k + 1), place((-w / 2, y))) }
     for (k, y) in side-pins(nout, h).enumerate() { anchor("out" + str(k + 1), place((w / 2, y))) }

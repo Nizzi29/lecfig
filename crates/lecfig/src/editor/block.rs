@@ -70,7 +70,8 @@ pub fn place(app: &mut App, kind: &'static str) {
     app.last_part = Some(kind);
     app.cursor = Pt(cell.0 + 1.0, cell.1);
     app.message = "placed · the next node to the right connects automatically · c label".into();
-    if kind == "box" {
+    // Nodes whose label is the point of placing them ask for it straight away.
+    if matches!(kind, "box" | "io" | "gain" | "tf" | "function") {
         app.start_insert(Target::BlockNode(i));
     }
 }

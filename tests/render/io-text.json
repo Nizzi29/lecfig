@@ -3,9 +3,9 @@
   "version": 2,
   "style": {"blocks": "laplace"},
   "nodes": [
-    {"id": "w", "type": "io", "at": [0, 0], "label": "Führungsgrößen \\ • Soll-Geschwindigkeit \\ • Soll-Lage"},
+    {"id": "w", "type": "io", "at": [0, 0], "label": "Führungsgrößen\n• Soll-Geschwindigkeit\n• Soll-Lage"},
     {"id": "s1", "type": "sum", "at": [1, 0]},
-    {"id": "bx1", "type": "box", "at": [2, 0], "label": "Regler"},
+    {"id": "bx1", "type": "box", "at": [2, 0], "label": "Regler\n(PI)"},
     {"id": "y", "type": "io", "at": [3, 0], "label": "Stellgröße $u$"}
   ],
   "edges": [

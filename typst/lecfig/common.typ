@@ -10,7 +10,11 @@
 )
 
 // Labels are stored as Typst math source. Empty strings render as nothing.
-#let lbl(s) = if s == none or s == "" { none } else { eval(s, mode: "math") }
+// A new line typed in the editor (Shift+Enter) is a line break in the figure.
+#let breaks(s) = s.replace("\n", " \\ ")
+#let lbl(s) = if s == none or s == "" { none } else { eval(breaks(s), mode: "math") }
+// Markup labels (generic blocks, inputs/outputs): text, math between dollars.
+#let txt(s) = if s == none or s == "" { [] } else { eval(breaks(s), mode: "markup") }
 
 // The compass anchor of a label that faces direction `d`.
 #let facing(d) = {
