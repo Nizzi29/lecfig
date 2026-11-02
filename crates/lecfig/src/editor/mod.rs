@@ -489,6 +489,10 @@ impl App {
 
     /// Picks up a new part: it follows the cursor until it is put down.
     pub fn start_place(&mut self, kind: &'static str) {
+        // New parts go on whole cells, also when the cursor sits half-way on a line.
+        if matches!(self.fig, Figure::Block(_)) {
+            self.cursor = Pt(self.cursor.0.floor(), self.cursor.1.floor());
+        }
         self.mode = Mode::Place { kind, original: self.fig.clone(), rot: 0 };
         self.sel.clear();
         self.update_place();
@@ -1217,7 +1221,8 @@ mod tests {
         assert_eq!(b.nodes.len(), 5);
         assert_eq!(b.edges.len(), 4);
         // A feedback line from the integrator back to the sum, below the row.
-        keys(&mut a, &ctx, "hhwj<Enter>hh<Enter>k<Enter><Tab>");
+        // From the end of the row onto the integrator (one stop on the arrow on the way).
+        keys(&mut a, &ctx, "hhhwj<Enter>hh<Enter>k<Enter><Tab>");
         let Figure::Block(b) = &a.fig else { panic!() };
         assert_eq!(b.edges.len(), 5);
         assert_eq!(b.edges[4].bends, vec![Pt(3.0, 1.0), Pt(1.0, 1.0)]);
@@ -1270,6 +1275,18 @@ mod tests {
         keys(&mut a, &ctx, "-");
         let Figure::Block(b) = &a.fig else { panic!() };
         assert_eq!(b.edges[1].sign, "-");
+        // Between the two adjacent blocks the cursor stops on the arrow.
+        keys(&mut a, &ctx, "kl");
+        assert_eq!(a.cursor, Pt(0.5, 0.0));
+        assert_eq!(block::under_cursor(&a), Some(Item::Wire(0)));
+        keys(&mut a, &ctx, "l");
+        assert_eq!(a.cursor, Pt(1.0, 0.0));
+        keys(&mut a, &ctx, "h");
+        assert_eq!(a.cursor, Pt(0.5, 0.0));
+        // Along a long line there are no extra stops.
+        keys(&mut a, &ctx, "hjl");
+        assert_eq!(a.cursor, Pt(1.0, 1.0));
+        keys(&mut a, &ctx, "hk");
         // On the first block, Tab walks only its lines.
         keys(&mut a, &ctx, "k<Tab>");
         assert_eq!(a.sel, vec![Item::Wire(0)]);

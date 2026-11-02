@@ -129,7 +129,39 @@ fn cursor_step(app: &mut App, ch: char) -> bool {
         'K' => Pt(0.0, -5.0),
         _ => return false,
     };
-    app.cursor = app.cursor.add(d);
+    app.cursor = whole(app.cursor).add(d);
+    app.chain = None;
+    true
+}
+
+/// The cell a (possibly half-way) cursor belongs to.
+fn whole(p: Pt) -> Pt {
+    Pt(p.0.floor(), p.1.floor())
+}
+
+/// Normal-mode cursor steps. Between two adjacent blocks joined by a line there is no
+/// free cell, so the cursor stops half-way, on the line, before reaching the next block.
+fn normal_step(app: &mut App, ch: char) -> bool {
+    let d = match ch {
+        'h' => Pt(-1.0, 0.0),
+        'l' => Pt(1.0, 0.0),
+        'j' => Pt(0.0, 1.0),
+        'k' => Pt(0.0, -1.0),
+        _ => return cursor_step(app, ch),
+    };
+    let c = app.cursor;
+    let half = c.0.fract() != 0.0 || c.1.fract() != 0.0;
+    if half {
+        // Along the line: on to the next block; across it: back onto whole cells.
+        let along = (c.0.fract() != 0.0 && d.0 != 0.0) || (c.1.fract() != 0.0 && d.1 != 0.0);
+        app.cursor = if along { c.add(d.scale(0.5)) } else { whole(c).add(d) };
+        return true;
+    }
+    let b = block(app);
+    let mid = c.add(d.scale(0.5));
+    let both_nodes = node_at(b, c).is_some() && node_at(b, c.add(d)).is_some();
+    let line_there = b.edges.iter().any(|e| edge_path(b, e).windows(2).any(|w| seg_dist(mid, w[0], w[1]) < 1e-6));
+    app.cursor = if both_nodes && line_there { mid } else { c.add(d) };
     app.chain = None;
     true
 }
@@ -204,24 +236,14 @@ pub fn key(app: &mut App, ch: Option<char>, key: Option<Key>) {
     }
 }
 
-/// Free cells a line passes through (cells holding nodes excluded).
-fn edge_cells(b: &Block, e: &BEdge) -> Vec<Pt> {
+/// A line's path in cell coordinates: from-node, bends, to-node.
+fn edge_path(b: &Block, e: &BEdge) -> Vec<Pt> {
     let pos = |id: &str| b.nodes.iter().find(|n| n.id == id).map(|n| n.at);
     let mut pts = vec![];
     pts.extend(pos(&e.from));
     pts.extend(e.bends.iter().copied());
     pts.extend(pos(&e.to));
-    let mut cells = vec![];
-    for w in pts.windows(2) {
-        let (a, c) = (w[0], w[1]);
-        let steps = (c.0 - a.0).abs().max((c.1 - a.1).abs()).round().max(0.0) as i64;
-        for k in 0..=steps {
-            let t = if steps == 0 { 0.0 } else { k as f64 / steps as f64 };
-            cells.push(Pt((a.0 + (c.0 - a.0) * t).round(), (a.1 + (c.1 - a.1) * t).round()));
-        }
-    }
-    cells.retain(|c| node_at(b, *c).is_none());
-    cells
+    pts
 }
 
 /// What the cursor is on: a node, else a line passing through the cursor's cell.
@@ -230,7 +252,7 @@ pub(super) fn under_cursor(app: &App) -> Option<Item> {
     if let Some(i) = node_at(b, app.cursor) {
         return Some(Item::Element(i));
     }
-    b.edges.iter().position(|e| edge_cells(b, e).iter().any(|c| c.dist(app.cursor) < 1e-6)).map(Item::Wire)
+    b.edges.iter().position(|e| edge_path(b, e).windows(2).any(|w| seg_dist(app.cursor, w[0], w[1]) < 1e-6)).map(Item::Wire)
 }
 
 /// Lines connected to node `i`.
@@ -241,7 +263,7 @@ pub(super) fn node_lines(b: &Block, i: usize) -> Vec<usize> {
 
 fn normal(app: &mut App, ch: Option<char>, key: Option<Key>) {
     if let Some(c) = ch {
-        if cursor_step(app, c) {
+        if normal_step(app, c) {
             return;
         }
     }
