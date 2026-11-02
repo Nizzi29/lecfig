@@ -253,7 +253,7 @@ pub fn generate(expr: &str, o: &Map<String, Value>) -> Result<Figure, Error> {
     let mut col = 0.0;
     let mut first_sign = "+";
     if let Some(i0) = inputs.first() {
-        main.push(add(&mut b, "in1".into(), "io", (col, 0.0), i0.signal.clone()));
+        main.push(add(&mut b, "in1".into(), "io", (col, 0.0), format!("${}$", i0.signal)));
         col += 1.0;
         if let Some(g) = gain_label(&i0.coef) {
             main.push(add(&mut b, "kin1".into(), "gain", (col, 0.0), g));
@@ -266,13 +266,13 @@ pub fn generate(expr: &str, o: &Map<String, Value>) -> Result<Figure, Error> {
         let io = format!("in{}", j + 1);
         match gain_label(&inp.coef) {
             Some(g) => {
-                add(&mut b, io.clone(), "io", (col, -2.0), inp.signal.clone());
+                add(&mut b, io.clone(), "io", (col, -2.0), format!("${}$", inp.signal));
                 let k = add(&mut b, format!("kin{}", j + 1), "gain", (col, -1.0), g);
                 edge(&mut b, &io, &k, String::new(), "", vec![]);
                 edge(&mut b, &k, &s, String::new(), sign_str(rho(inp)), vec![]);
             }
             None => {
-                add(&mut b, io.clone(), "io", (col, -1.0), inp.signal.clone());
+                add(&mut b, io.clone(), "io", (col, -1.0), format!("${}$", inp.signal));
                 edge(&mut b, &io, &s, String::new(), sign_str(rho(inp)), vec![]);
             }
         }
@@ -309,7 +309,7 @@ pub fn generate(expr: &str, o: &Map<String, Value>) -> Result<Figure, Error> {
             col += 1.0;
         }
     }
-    main.push(add(&mut b, "out".into(), "io", (col, 0.0), p.out.clone()));
+    main.push(add(&mut b, "out".into(), "io", (col, 0.0), format!("${}$", p.out)));
 
     // Chain the main line; edges into sums carry their sign.
     let fb_count = fb_sums.len();
@@ -389,7 +389,7 @@ mod tests {
     #[test]
     fn mass_spring_damper() {
         let b = block("m y'' + d y' + c y = F");
-        assert_eq!(label(&b, "in1"), "F");
+        assert_eq!(label(&b, "in1"), "$F$");
         assert_eq!(label(&b, "kn"), "1/m");
         assert_eq!(label(&b, "k1"), "d");
         assert_eq!(label(&b, "k0"), "c");

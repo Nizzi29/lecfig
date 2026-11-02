@@ -10,6 +10,8 @@
 }
 
 #let render-block(data, editor: false) = {
+  // From schema version 2 on, input/output labels are markup (text, $math$).
+  let io-markup = data.at("version", default: 1) >= 2
   let laplace = data.at("style", default: (:)).at("blocks", default: "laplace") == "laplace"
   let nodes = data.at("nodes", default: ())
   let kinds = (:)
@@ -32,7 +34,9 @@
       // Generic block: the label is Typst markup (text, $math$).
       items.push(node(pos, mark(n, eval(n.at("label", default: ""), mode: "markup")), shape: rect, name: name))
     } else if t == "io" {
-      items.push(node(pos, mark(n, node-body(n, laplace)), stroke: none, name: name))
+      // Multi-line labels (lists) read best left-aligned.
+      let body = if io-markup { align(left, eval(n.at("label", default: ""), mode: "markup")) } else { node-body(n, laplace) }
+      items.push(node(pos, mark(n, body), stroke: none, name: name))
     } else {
       // gain, integrator, tf, function
       items.push(node(pos, mark(n, node-body(n, laplace)), shape: rect, name: name))

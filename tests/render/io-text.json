@@ -1,0 +1,16 @@
+{
+  "kind": "block",
+  "version": 2,
+  "style": {"blocks": "laplace"},
+  "nodes": [
+    {"id": "w", "type": "io", "at": [0, 0], "label": "Führungsgrößen \\ • Soll-Geschwindigkeit \\ • Soll-Lage"},
+    {"id": "s1", "type": "sum", "at": [1, 0]},
+    {"id": "bx1", "type": "box", "at": [2, 0], "label": "Regler"},
+    {"id": "y", "type": "io", "at": [3, 0], "label": "Stellgröße $u$"}
+  ],
+  "edges": [
+    {"from": "w", "to": "s1", "sign": "+"},
+    {"from": "s1", "to": "bx1", "label": "e"},
+    {"from": "bx1", "to": "y"}
+  ]
+}

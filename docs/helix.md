@@ -26,11 +26,11 @@ e = ":run-shell-command lecfig edit --for \"%{buffer_name}\" --line %{cursor_lin
 | `space l p` | New figure from a preset (edit the binding for other presets; `lecfig presets` lists them) |
 | `space l e` | Reopen the figure whose `#fig("…")` is on the cursor line |
 
-Generic boxes in block diagrams (Regler, Aktuator, Sensor …): `space g` places a block whose label is Typst markup, so text goes in as is and math between dollars (`Führungsgröße $w$`).
+Generic boxes in block diagrams (Regler, Aktuator, Sensor …): `space g` places a block whose label is Typst markup, so text goes in as is and math between dollars (`Führungsgröße $w$`). Text at the start or end of an arrow is an input/output node (`space e`) with the same kind of label, e.g. `Führungsgrößen \ • Soll-Lage`.
 
 Generic boxes in circuits (converters, subsystems): `space b` places a labeled block. Labels are Typst math, so text goes in quotes and `\` breaks lines: `"AC/DC"`, `"DC" \ "DC"`. With the block selected, `+`/`-` and `>`/`<` resize it, `]`/`[` and `}`/`{` add or remove pins on the right and left.
 
-Generic boxes in block diagrams (Regler, Aktuator, Sensor …): `space g` places a block whose label is Typst markup, so text goes in as is and math between dollars (`Führungsgröße $w$`).
+Generic boxes in block diagrams (Regler, Aktuator, Sensor …): `space g` places a block whose label is Typst markup, so text goes in as is and math between dollars (`Führungsgröße $w$`). Text at the start or end of an arrow is an input/output node (`space e`) with the same kind of label, e.g. `Führungsgrößen \ • Soll-Lage`.
 
 Generic boxes in circuits (converters, subsystems): `space b` places a labeled block. Labels are Typst math, so text goes in quotes and `\` breaks lines: `"AC/DC"`, `"DC" \ "DC"`. With the block selected, `+`/`-` and `>`/`<` resize it, `]`/`[` and `}`/`{` add or remove pins on the right and left.
 

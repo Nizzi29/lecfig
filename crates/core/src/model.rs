@@ -474,7 +474,26 @@ impl Figure {
                 "figure has schema version {version}, this lecfig reads up to {SCHEMA_VERSION}"
             )));
         }
-        Ok(fig)
+        Ok(fig.upgraded())
+    }
+
+    /// Converts an older figure to the current schema without changing how it looks.
+    fn upgraded(mut self) -> Figure {
+        match &mut self {
+            Figure::Block(b) if b.version < 2 => {
+                // Input/output labels were math; as markup the same math needs dollars.
+                for n in b.nodes.iter_mut().filter(|n| n.kind == "io" && !n.label.trim().is_empty()) {
+                    n.label = format!("${}$", n.label.trim());
+                }
+            }
+            _ => {}
+        }
+        match &mut self {
+            Figure::Circuit(c) => c.version = SCHEMA_VERSION,
+            Figure::Block(b) => b.version = SCHEMA_VERSION,
+            Figure::Magnetic(m) => m.version = SCHEMA_VERSION,
+        }
+        self
     }
 
     /// Pretty JSON that diffs well: one key per line at the top, one element per line in

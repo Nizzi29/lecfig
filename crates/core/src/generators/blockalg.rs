@@ -293,9 +293,10 @@ impl Out {
 pub fn generate(expr: &str, o: &Map<String, Value>) -> Result<Figure, Error> {
     let tree = parse(expr)?;
     let mut out = Out { nodes: vec![], edges: vec![], n: 0 };
-    let input = out.node("io", Pt(0.0, 0.0), opt_str(o, "input").unwrap_or("r"));
+    // Signal names are math; input/output labels are markup, hence the dollars.
+    let input = out.node("io", Pt(0.0, 0.0), &format!("${}$", opt_str(o, "input").unwrap_or("r")));
     let p = out.place(&tree, 1.0, 0.0, false);
-    let output = out.node("io", Pt(1.0 + p.width, 0.0), opt_str(o, "output").unwrap_or("y"));
+    let output = out.node("io", Pt(1.0 + p.width, 0.0), &format!("${}$", opt_str(o, "output").unwrap_or("y")));
     out.edge(&input, &p.entry, "", vec![]);
     out.edge(&p.exit, &output, "", vec![]);
     Ok(Figure::Block(Block { nodes: out.nodes, edges: out.edges, ..Default::default() }))

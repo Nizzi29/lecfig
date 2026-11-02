@@ -123,7 +123,7 @@ pub fn hints(app: &App) -> Hints {
 fn insert(app: &App, target: &Target) -> Hints {
     // Generic blocks take Typst markup: text as is, math between dollars.
     if let (Target::BlockNode(i), Figure::Block(b)) = (target, &app.fig) {
-        if b.nodes.get(*i).is_some_and(|n| n.kind == "box") {
+        if b.nodes.get(*i).is_some_and(|n| matches!(n.kind.as_str(), "box" | "io")) {
             return Hints {
                 title: "Typing a block label".into(),
                 note: Some("Typst markup, shown live: plain text, math between dollars".into()),
@@ -135,6 +135,7 @@ fn insert(app: &App, target: &Target) -> Hints {
                             ("Regler", "plain text"),
                             ("$G(s)$", "math"),
                             ("Führungsgröße $w$", "text with math"),
+                            ("• Soll-Lage", "bullet point"),
                             ("\\", "line break: Aktuator \\ (Motor)"),
                             ("*fett* _kursiv_", "bold / italic"),
                         ],

@@ -81,7 +81,7 @@ fn default_label(b: &Block, kind: &str) -> String {
         "tf" => "G(s)".to_string(),
         "function" => "f(dot)".to_string(),
         "box" => "Block".to_string(),
-        "io" => if b.nodes.iter().any(|n| n.kind == "io") { "y" } else { "u" }.to_string(),
+        "io" => if b.nodes.iter().any(|n| n.kind == "io") { "$y$" } else { "$u$" }.to_string(),
         _ => String::new(),
     }
 }

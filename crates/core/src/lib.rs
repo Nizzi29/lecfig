@@ -4,7 +4,9 @@
 //! code runs in the `lecfig` binary and inside Typst as a WebAssembly plugin.
 
 /// Version of the figure JSON format this crate reads and writes.
-pub const SCHEMA_VERSION: u32 = 1;
+/// 2: labels of block-diagram input/output nodes are Typst markup (text, `$math$`);
+///    in version 1 they were Typst math. Older files are converted when read.
+pub const SCHEMA_VERSION: u32 = 2;
 
 pub mod generators;
 pub mod model;
@@ -19,7 +21,7 @@ mod tests {
 
     const SAMPLE: &str = r#"{
   "kind": "circuit",
-  "version": 1,
+  "version": 2,
   "flavor": "network",
   "elements": [
     {"id": "v1", "type": "vsource", "from": [0, 0], "to": [0, 3], "label": "U_0", "u": "u_1"},
@@ -48,8 +50,21 @@ mod tests {
     }
 
     #[test]
+    fn version_1_block_labels_become_markup() {
+        let v1 = r#"{"kind": "block", "version": 1, "nodes": [
+            {"id": "u", "type": "io", "at": [0, 0], "label": "omega_0^2 u"},
+            {"id": "e", "type": "io", "at": [1, 0]},
+            {"id": "k", "type": "gain", "at": [2, 0], "label": "K"}], "edges": []}"#;
+        let Figure::Block(b) = Figure::from_json(v1).unwrap() else { panic!() };
+        assert_eq!(b.version, SCHEMA_VERSION);
+        assert_eq!(b.nodes[0].label, "$omega_0^2 u$");
+        assert_eq!(b.nodes[1].label, "");
+        assert_eq!(b.nodes[2].label, "K", "only input/output labels change");
+    }
+
+    #[test]
     fn rejects_newer_schema() {
-        let text = SAMPLE.replace("\"version\": 1", "\"version\": 99");
+        let text = SAMPLE.replace("\"version\": 2", "\"version\": 99");
         assert!(Figure::from_json(&text).is_err());
     }
 }

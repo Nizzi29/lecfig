@@ -1038,7 +1038,7 @@ impl App {
         // INSERT: one line of Typst source, applied live.
         let mut finish: Option<bool> = None;
         let markup = match (&self.mode, &self.fig) {
-            (Mode::Insert { target: Target::BlockNode(i), .. }, Figure::Block(b)) => b.nodes.get(*i).is_some_and(|n| n.kind == "box"),
+            (Mode::Insert { target: Target::BlockNode(i), .. }, Figure::Block(b)) => b.nodes.get(*i).is_some_and(|n| matches!(n.kind.as_str(), "box" | "io")),
             _ => false,
         };
         if let Mode::Insert { target, text, focus, .. } = &mut self.mode {

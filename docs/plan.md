@@ -101,7 +101,7 @@ lecfig/
 
 - Grid units everywhere. Two-terminal parts use `from`/`to` (zap style, pins are the endpoints); multi-pin parts use `at` + `rot` + `flip` with pins from the part catalog.
 - Wires are explicit polylines; endpoints may be pin refs (`"r1.out"`) so wires follow moved parts. Lossless round trip, no auto-routing to drift.
-- `kind: "block"`: nodes `sum` (input signs), `gain`, `integrator`, `tf`, `function`, `io`, `branch`; edges `{from, to, label, sign, bends}`; `style.blocks: "laplace" | "time"`.
+- `kind: "block"`: nodes `sum` (input signs), `gain`, `integrator`, `tf`, `function`, `box` (generic, markup label), `io` (markup label from schema 2, math before), `branch`; edges `{from, to, label, sign, bends}`; `style.blocks: "laplace" | "time"`.
 - `kind: "magnetic"`: core, windings, fluxes, sections and callouts placed on the core instead of the grid; see "Magnetic figures" below.
 - `source` = provenance, so a generated figure can be regenerated.
 - Writes are atomic (temp file + rename in the same folder) so tinymist and file-sync clients never see half-written JSON.
