@@ -12,8 +12,12 @@ const MARKER_TEXT: &str = include_str!("../../../templates/course/lecfig.toml");
 /// Walks up from `start` (a file or folder) to the folder holding `lecfig.toml`.
 pub fn find_root(start: &Path) -> Result<PathBuf, String> {
     let start = if start.as_os_str().is_empty() { Path::new(".") } else { start };
+    // A file not saved yet still belongs to its folder ("" means the working folder).
     let abs = fs::canonicalize(start)
-        .or_else(|_| start.parent().map(fs::canonicalize).unwrap_or(Err(std::io::ErrorKind::NotFound.into())))
+        .or_else(|_| {
+            let parent = start.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
+            fs::canonicalize(parent)
+        })
         .map_err(|e| format!("{}: {e}", start.display()))?;
     let mut dir = if abs.is_dir() { abs.clone() } else { abs.parent().unwrap_or(&abs).to_path_buf() };
     loop {
@@ -202,6 +206,20 @@ mod tests {
     fn rewrites_only_whole_references() {
         let t = "#fig(\"rc\")\nSee @fig:rc and @fig:rc-2.\n#fig(\"rc\", caption: [x])";
         assert_eq!(rewrite_refs(t, "rc", "lowpass"), "#fig(\"lowpass\")\nSee @fig:lowpass and @fig:rc-2.\n#fig(\"lowpass\", caption: [x])");
+    }
+
+    #[test]
+    fn unsaved_file_finds_its_course() {
+        let dir = std::env::temp_dir().join("lecfig-unsaved-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(MARKER), "").unwrap();
+        let root = std::fs::canonicalize(&dir).unwrap();
+        assert_eq!(find_root(&dir.join("not-saved-yet.typ")).unwrap(), root);
+        let cwd = std::env::current_dir().unwrap();
+        std::env::set_current_dir(&dir).unwrap();
+        let found = find_root(Path::new("not-saved-yet.typ"));
+        std::env::set_current_dir(cwd).unwrap();
+        assert_eq!(found.unwrap(), root);
     }
 
     #[test]

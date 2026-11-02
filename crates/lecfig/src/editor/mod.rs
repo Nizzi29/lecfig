@@ -250,7 +250,8 @@ impl App {
             return;
         }
         let json = self.fig.to_json();
-        if json != self.saved {
+        // Also rewrite a file that disappeared while the editor is open.
+        if json != self.saved || !self.path.exists() {
             match crate::course::write_figure(&self.path, &self.fig) {
                 Ok(()) => self.saved = json,
                 Err(e) => self.error = Some(format!("save failed: {e}")),
