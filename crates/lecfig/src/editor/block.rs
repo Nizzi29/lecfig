@@ -58,10 +58,14 @@ pub fn place(app: &mut App, kind: &'static str) {
         .and_then(|id| b.nodes.iter().find(|n| &n.id == id))
         .filter(|n| (n.at.1 - cell.1).abs() < 1e-6 && (cell.0 - n.at.0 - 1.0).abs() < 1e-6)
         .map(|n| n.id.clone());
+    // Placed on a line: the node goes into that line (e.g. a branch point for a fork).
+    let split = b.edges.iter().position(|e| edge_path(b, e).windows(2).any(|w| seg_dist(cell, w[0], w[1]) < 1e-6));
     app.checkpoint();
     let b = block_mut(app);
     b.nodes.push(BNode { id: id.clone(), kind: kind.into(), at: cell, label, extra: Map::new() });
-    if let Some(from) = chain_from {
+    if let Some(k) = split {
+        split_edge(b, k, &id, cell);
+    } else if let Some(from) = chain_from {
         b.edges.push(BEdge { from, to: id.clone(), ..Default::default() });
     }
     let i = b.nodes.len() - 1;
@@ -74,6 +78,19 @@ pub fn place(app: &mut App, kind: &'static str) {
     if matches!(kind, "box" | "io" | "gain" | "tf" | "function") {
         app.start_insert(Target::BlockNode(i));
     }
+}
+
+/// Splits line `k` at `cell` into two lines through node `id`. The signal name stays on
+/// the first part, the sign (drawn at the arrow head) on the second.
+fn split_edge(b: &mut Block, k: usize, id: &str, cell: Pt) {
+    let e = b.edges.remove(k);
+    let path = edge_path(b, &e);
+    // Segment s runs from path[s] to path[s + 1]; path[1..len-1] are the bends.
+    let s = path.windows(2).position(|w| seg_dist(cell, w[0], w[1]) < 1e-6).unwrap_or(0);
+    let before: Vec<Pt> = e.bends[..s.min(e.bends.len())].iter().copied().filter(|p| p.dist(cell) > 1e-6).collect();
+    let after: Vec<Pt> = e.bends[s.min(e.bends.len())..].iter().copied().filter(|p| p.dist(cell) > 1e-6).collect();
+    b.edges.insert(k, BEdge { from: e.from.clone(), to: id.into(), label: e.label.clone(), bends: before, ..Default::default() });
+    b.edges.insert(k + 1, BEdge { from: id.into(), to: e.to.clone(), sign: e.sign.clone(), bends: after, extra: e.extra.clone(), ..Default::default() });
 }
 
 fn default_label(b: &Block, kind: &str) -> String {
@@ -371,7 +388,8 @@ fn normal(app: &mut App, ch: Option<char>, key: Option<Key>) {
 fn node_pos(app: &App, i: usize) -> Pt {
     let b = block(app);
     let n = &b.nodes[i];
-    app.shown_node(&n.id).unwrap_or_else(|| app.cell_pos(n.at))
+    // Nodes sit centred on their cell; the cell markers give that position exactly.
+    app.cell_pos(n.at)
 }
 
 fn edge_points(app: &App, e: &BEdge) -> Vec<Pt> {

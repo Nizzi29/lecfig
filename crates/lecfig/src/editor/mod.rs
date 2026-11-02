@@ -312,11 +312,6 @@ impl App {
         Pt((d.x / u) as f64, (y_sign * d.y / u) as f64)
     }
 
-    /// Where the last render put a block-diagram node (figure coordinates).
-    pub fn shown_node(&self, id: &str) -> Option<Pt> {
-        self.shown.as_ref()?.nodes.iter().find(|(n, _)| n == id).map(|(_, p)| *p)
-    }
-
     pub fn snap(&self, p: Pt) -> Pt {
         let s = self.step();
         Pt((p.0 / s).round() * s, (p.1 / s).round() * s)
@@ -1303,6 +1298,28 @@ mod tests {
         assert_eq!(a.sel, vec![Item::Wire(0)]);
         keys(&mut a, &ctx, "<Tab>");
         assert_eq!(a.sel, vec![Item::Wire(1)]);
+    }
+
+    #[test]
+    fn placing_on_a_line_forks_it() {
+        // System at column 0, output two cells to the right: a free cell between them.
+        let fig = Figure::from_json(r#"{"kind": "block", "version": 2, "nodes": [
+            {"id": "sys", "type": "box", "at": [0, 0], "label": "Regelstrecke"},
+            {"id": "y", "type": "io", "at": [2, 0], "label": "Regelgröße"}],
+            "edges": [{"from": "sys", "to": "y", "label": "x"}]}"#).unwrap();
+        let (mut a, ctx) = app(fig);
+        keys(&mut a, &ctx, "l");
+        assert_eq!(block::under_cursor(&a), Some(Item::Wire(0)));
+        keys(&mut a, &ctx, " b<Enter>");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        let br = b.nodes.iter().find(|n| n.kind == "branch").unwrap().id.clone();
+        assert_eq!(b.edges.len(), 2);
+        assert_eq!((b.edges[0].from.as_str(), b.edges[0].to.as_str(), b.edges[0].label.as_str()), ("sys", br.as_str(), "x"));
+        assert_eq!((b.edges[1].from.as_str(), b.edges[1].to.as_str()), (br.as_str(), "y"));
+        // The fork: a line from the branch point down to a new output.
+        keys(&mut a, &ctx, "<Esc>hwjj<Enter>");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        assert_eq!(b.edges.len(), 2, "no node below yet: Enter there makes a bend");
     }
 
     #[test]
