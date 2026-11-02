@@ -36,6 +36,7 @@ fn prefix(kind: &str) -> &'static str {
         "tf" => "g",
         "function" => "f",
         "branch" => "b",
+        "box" => "bx",
         _ => "io",
     }
 }
@@ -69,6 +70,9 @@ pub fn place(app: &mut App, kind: &'static str) {
     app.last_part = Some(kind);
     app.cursor = Pt(cell.0 + 1.0, cell.1);
     app.message = "placed · the next node to the right connects automatically · c label".into();
+    if kind == "box" {
+        app.start_insert(Target::BlockNode(i));
+    }
 }
 
 fn default_label(b: &Block, kind: &str) -> String {
@@ -76,6 +80,7 @@ fn default_label(b: &Block, kind: &str) -> String {
         "gain" => "K".to_string(),
         "tf" => "G(s)".to_string(),
         "function" => "f(dot)".to_string(),
+        "box" => "Block".to_string(),
         "io" => if b.nodes.iter().any(|n| n.kind == "io") { "y" } else { "u" }.to_string(),
         _ => String::new(),
     }

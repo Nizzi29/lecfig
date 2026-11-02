@@ -1237,6 +1237,16 @@ mod tests {
     }
 
     #[test]
+    fn generic_block_asks_for_its_label() {
+        let (mut a, ctx) = app(Figure::Block(Block::default()));
+        keys(&mut a, &ctx, " g<Enter>");
+        assert!(matches!(a.mode, Mode::Insert { .. }), "label input opens after placing");
+        assert_eq!(hints::hints(&a).title, "Typing a block label");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        assert_eq!((b.nodes[0].kind.as_str(), b.nodes[0].label.as_str()), ("box", "Block"));
+    }
+
+    #[test]
     fn magnetic_flip_and_turns() {
         let fig = presets::build_named("transformer").unwrap();
         let (mut a, ctx) = app(fig);

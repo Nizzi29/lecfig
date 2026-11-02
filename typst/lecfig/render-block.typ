@@ -28,6 +28,9 @@
       items.push(node(pos, mark(n, []), shape: circle, radius: 0.45em, name: name))
     } else if t == "branch" {
       items.push(node(pos, mark(n, []), shape: circle, radius: 1.6pt, fill: black, stroke: none, name: name))
+    } else if t == "box" {
+      // Generic block: the label is Typst markup (text, $math$).
+      items.push(node(pos, mark(n, eval(n.at("label", default: ""), mode: "markup")), shape: rect, name: name))
     } else if t == "io" {
       items.push(node(pos, mark(n, node-body(n, laplace)), stroke: none, name: name))
     } else {
@@ -51,7 +54,7 @@
   diagram(
     node-stroke: 0.6pt,
     edge-stroke: 0.6pt,
-    spacing: (1.8em, 1.4em),
+    spacing: (2.3em, 1.5em),
     node-inset: 0.55em,
     ..items,
   )

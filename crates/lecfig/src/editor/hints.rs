@@ -116,11 +116,33 @@ pub fn hints(app: &App) -> Hints {
                 ],
             )],
         },
-        Mode::Insert { target, .. } => insert(target),
+        Mode::Insert { target, .. } => insert(app, target),
     }
 }
 
-fn insert(target: &Target) -> Hints {
+fn insert(app: &App, target: &Target) -> Hints {
+    // Generic blocks take Typst markup: text as is, math between dollars.
+    if let (Target::BlockNode(i), Figure::Block(b)) = (target, &app.fig) {
+        if b.nodes.get(*i).is_some_and(|n| n.kind == "box") {
+            return Hints {
+                title: "Typing a block label".into(),
+                note: Some("Typst markup, shown live: plain text, math between dollars".into()),
+                groups: vec![
+                    g("keys", &[("Enter", "keep it"), ("Esc", "undo the change")]),
+                    g(
+                        "Typst markup",
+                        &[
+                            ("Regler", "plain text"),
+                            ("$G(s)$", "math"),
+                            ("Führungsgröße $w$", "text with math"),
+                            ("\\", "line break: Aktuator \\ (Motor)"),
+                            ("*fett* _kursiv_", "bold / italic"),
+                        ],
+                    ),
+                ],
+            };
+        }
+    }
     if *target == Target::Expr {
         return Hints {
             title: "Editing the expression".into(),
@@ -286,6 +308,7 @@ fn block_name(kind: &str) -> &'static str {
         "tf" => "transfer function",
         "function" => "function",
         "branch" => "branch point",
+        "box" => "block",
         _ => "input / output",
     }
 }

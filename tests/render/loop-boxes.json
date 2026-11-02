@@ -1,0 +1,25 @@
+{
+  "kind": "block",
+  "version": 1,
+  "style": {"blocks": "laplace"},
+  "nodes": [
+    {"id": "w", "type": "io", "at": [0, 0], "label": "\"Führungsgröße\" w"},
+    {"id": "s1", "type": "sum", "at": [1, 0]},
+    {"id": "bx1", "type": "box", "at": [2, 0], "label": "Regler"},
+    {"id": "bx2", "type": "box", "at": [3, 0], "label": "Aktuator"},
+    {"id": "bx3", "type": "box", "at": [4, 0], "label": "System"},
+    {"id": "b1", "type": "branch", "at": [5, 0]},
+    {"id": "y", "type": "io", "at": [6, 0], "label": "y(t)"},
+    {"id": "bx4", "type": "box", "at": [4, 1], "label": "Sensor"}
+  ],
+  "edges": [
+    {"from": "w", "to": "s1", "sign": "+"},
+    {"from": "s1", "to": "bx1", "label": "e"},
+    {"from": "bx1", "to": "bx2"},
+    {"from": "bx2", "to": "bx3", "label": "u(t)"},
+    {"from": "bx3", "to": "b1"},
+    {"from": "b1", "to": "y"},
+    {"from": "b1", "to": "bx4", "bends": [[5, 1]]},
+    {"from": "bx4", "to": "s1", "bends": [[1, 1]], "sign": "-"}
+  ]
+}

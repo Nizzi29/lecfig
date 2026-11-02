@@ -141,6 +141,7 @@ pub fn menu(name: &str) -> Vec<&'static Entry> {
         p('-', "supply −", "vee"),
     ];
     static BLOCK: &[Entry] = &[
+        Entry { key: 'g', label: "generic block (any text, $math$)", action: Action::Block("box") },
         Entry { key: 's', label: "sum", action: Action::Block("sum") },
         Entry { key: 'k', label: "gain", action: Action::Block("gain") },
         Entry { key: 'i', label: "integrator", action: Action::Block("integrator") },
