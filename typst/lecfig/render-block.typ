@@ -64,7 +64,17 @@
     items.push(edge(..verts, marks, ..args))
     // The sign sits next to the arrow head, as an invisible twin of the edge.
     if e.at("sign", default: "") != "" {
-      items.push(edge(..verts, "-", stroke: none, label: text(0.9em, eval(e.sign, mode: "math")), label-pos: 0.92, label-side: left))
+      // On the last segment, just before the arrow head, beside the line (fletcher would
+      // otherwise put it on the longest segment of a bent line).
+      items.push(edge(
+        ..verts,
+        "-",
+        stroke: none,
+        label: text(0.9em, eval(e.sign, mode: "math")),
+        label-pos: (verts.len() - 2, 100% - 0.9em),
+        label-side: left,
+        label-sep: 0.2em,
+      ))
     }
   }
 
