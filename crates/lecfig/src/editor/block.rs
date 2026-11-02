@@ -204,6 +204,41 @@ pub fn key(app: &mut App, ch: Option<char>, key: Option<Key>) {
     }
 }
 
+/// Free cells a line passes through (cells holding nodes excluded).
+fn edge_cells(b: &Block, e: &BEdge) -> Vec<Pt> {
+    let pos = |id: &str| b.nodes.iter().find(|n| n.id == id).map(|n| n.at);
+    let mut pts = vec![];
+    pts.extend(pos(&e.from));
+    pts.extend(e.bends.iter().copied());
+    pts.extend(pos(&e.to));
+    let mut cells = vec![];
+    for w in pts.windows(2) {
+        let (a, c) = (w[0], w[1]);
+        let steps = (c.0 - a.0).abs().max((c.1 - a.1).abs()).round().max(0.0) as i64;
+        for k in 0..=steps {
+            let t = if steps == 0 { 0.0 } else { k as f64 / steps as f64 };
+            cells.push(Pt((a.0 + (c.0 - a.0) * t).round(), (a.1 + (c.1 - a.1) * t).round()));
+        }
+    }
+    cells.retain(|c| node_at(b, *c).is_none());
+    cells
+}
+
+/// What the cursor is on: a node, else a line passing through the cursor's cell.
+pub(super) fn under_cursor(app: &App) -> Option<Item> {
+    let b = block(app);
+    if let Some(i) = node_at(b, app.cursor) {
+        return Some(Item::Element(i));
+    }
+    b.edges.iter().position(|e| edge_cells(b, e).iter().any(|c| c.dist(app.cursor) < 1e-6)).map(Item::Wire)
+}
+
+/// Lines connected to node `i`.
+pub(super) fn node_lines(b: &Block, i: usize) -> Vec<usize> {
+    let id = &b.nodes[i].id;
+    (0..b.edges.len()).filter(|&k| &b.edges[k].from == id || &b.edges[k].to == id).collect()
+}
+
 fn normal(app: &mut App, ch: Option<char>, key: Option<Key>) {
     if let Some(c) = ch {
         if cursor_step(app, c) {
@@ -211,27 +246,38 @@ fn normal(app: &mut App, ch: Option<char>, key: Option<Key>) {
         }
     }
     let at_cursor = node_at(block(app), app.cursor);
+    let under = under_cursor(app);
     match (ch, key) {
         (Some('.'), _) => {
             if let Some(kind) = app.last_part {
                 app.start_place(kind);
             }
         }
-        (Some('v'), _) => app.sel = at_cursor.map(Item::Element).into_iter().collect(),
+        (Some('v'), _) => app.sel = under.into_iter().collect(),
         (_, Some(Key::Tab)) => {
-            let n = block(app).edges.len();
-            if n > 0 {
-                let next = match app.sel.first() {
-                    Some(Item::Wire(i)) => (i + 1) % n,
-                    _ => 0,
+            // On a node: its own lines; elsewhere: all lines.
+            let lines = match at_cursor {
+                Some(i) => node_lines(block(app), i),
+                None => (0..block(app).edges.len()).collect(),
+            };
+            if !lines.is_empty() {
+                let cur = match app.sel.first() {
+                    Some(Item::Wire(i)) => lines.iter().position(|k| k == i),
+                    _ => None,
                 };
-                app.sel = vec![Item::Wire(next)];
+                let next = cur.map(|p| (p + 1) % lines.len()).unwrap_or(0);
+                app.sel = vec![Item::Wire(lines[next])];
             }
         }
         (Some(s @ ('+' | '-' | '0')), _) => {
-            let edges: Vec<usize> = app.sel.iter().filter_map(|it| if let Item::Wire(i) = it { Some(*i) } else { None }).collect();
+            let mut edges: Vec<usize> = app.sel.iter().filter_map(|it| if let Item::Wire(i) = it { Some(*i) } else { None }).collect();
             if edges.is_empty() {
-                app.message = "select a line first (Tab or click)".into();
+                if let Some(Item::Wire(i)) = under {
+                    edges.push(i);
+                }
+            }
+            if edges.is_empty() {
+                app.message = "put the cursor on a line, or select one (Tab or click)".into();
                 return;
             }
             app.checkpoint();
@@ -239,7 +285,7 @@ fn normal(app: &mut App, ch: Option<char>, key: Option<Key>) {
                 block_mut(app).edges[i].sign = if s == '0' { String::new() } else { s.to_string() };
             }
         }
-        (Some('c'), _) => match app.sel.first().copied().or(at_cursor.map(Item::Element)) {
+        (Some('c'), _) => match app.sel.first().copied().or(under) {
             Some(Item::Element(i)) => app.start_insert(Target::BlockNode(i)),
             Some(Item::Wire(i)) => app.start_insert(Target::BlockEdge(i)),
             _ => {}
@@ -247,7 +293,7 @@ fn normal(app: &mut App, ch: Option<char>, key: Option<Key>) {
         (Some('d'), _) | (_, Some(Key::Delete | Key::Backspace)) => {
             let mut items = app.sel.clone();
             if items.is_empty() {
-                items.extend(at_cursor.map(Item::Element));
+                items.extend(under);
             }
             if items.is_empty() {
                 return;
@@ -354,6 +400,14 @@ pub fn overlay(app: &App, painter: &egui::Painter, canvas: Rect) {
     let b = block(app);
     let cell = app.to_screen(canvas, app.cell_pos(app.cursor));
     painter.rect_stroke(Rect::from_center_size(cell, egui::vec2(34.0, 26.0)), 4.0, Stroke::new(1.0, Color32::from_rgba_unmultiplied(220, 50, 47, 140)), egui::StrokeKind::Outside);
+    if app.sel.is_empty() && matches!(app.mode, Mode::Normal) {
+        if let Some(Item::Wire(i)) = under_cursor(app) {
+            let pts: Vec<egui::Pos2> = edge_points(app, &b.edges[i]).iter().map(|p| app.to_screen(canvas, *p)).collect();
+            for s in pts.windows(2) {
+                painter.line_segment([s[0], s[1]], Stroke::new(3.0, Color32::from_rgba_unmultiplied(220, 50, 47, 70)));
+            }
+        }
+    }
     for it in &app.sel {
         match *it {
             Item::Element(i) if i < b.nodes.len() => {

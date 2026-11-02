@@ -346,17 +346,43 @@ fn block(app: &App, b: &Block) -> Hints {
             (format!("Selected: line {} → {}", e.from, e.to), if e.sign.is_empty() { None } else { Some(format!("sign {}", e.sign)) })
         }
         _ => {
+            let under = super::block::under_cursor(app);
+            if let Some(Item::Wire(i)) = under {
+                let e = &b.edges[i];
+                groups.push((
+                    "line under the cursor",
+                    vec![
+                        ("c", if e.label.is_empty() { "name the signal".into() } else { format!("rename the signal ({})", e.label) }),
+                        ("+ / -", "sign at its arrow head".into()),
+                        ("0", "no sign".into()),
+                        ("d", "delete it".into()),
+                        ("v", "select it".into()),
+                    ],
+                ));
+            }
+            if let Some(Item::Element(i)) = under {
+                let n = &b.nodes[i];
+                let lines = super::block::node_lines(b, i).len();
+                groups.push((
+                    "block under the cursor",
+                    vec![
+                        ("c", format!("change the label ({})", if n.label.is_empty() { block_name(&n.kind) } else { &n.label })),
+                        ("w", "draw a line from it".into()),
+                        ("Tab", format!("select its lines ({lines}) one by one")),
+                        ("m / d", "move / delete it".into()),
+                    ],
+                ));
+            }
             let mut add: Vec<(&'static str, String)> = vec![("space", "pick a block (it follows the cursor)".into())];
             if let Some(k) = app.last_part {
                 add.push((".", format!("again: {}", block_name(k))));
             }
-            add.push(("w", "draw a line from the node at the cursor".into()));
             groups.push(("add", add));
             groups.push((
                 "select & navigate",
                 vec![
-                    ("h j k l", "move between cells".into()),
-                    ("v / click", "select the node".into()),
+                    ("h j k l", "move between cells (onto lines too)".into()),
+                    ("v / click", "select the node or line".into()),
                     ("Tab", "select the next line".into()),
                     ("S", if b.style.blocks == "laplace" { "draw integrators as ∫".into() } else { "draw integrators as 1/s".into() }),
                 ],

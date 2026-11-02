@@ -332,7 +332,14 @@ impl App {
             .map(|s| {
                 s.nodes
                     .iter()
-                    .filter_map(|(id, pos)| b.nodes.iter().find(|n| &n.id == id).map(|n| (n.at, *pos)))
+                    .filter_map(|(id, pos)| {
+                        // "cell:x:y" markers give exact cell centres, also of empty rows.
+                        if let Some(rest) = id.strip_prefix("cell:") {
+                            let (x, y) = rest.split_once(':')?;
+                            return Some((Pt(x.parse().ok()?, y.parse().ok()?), *pos));
+                        }
+                        b.nodes.iter().find(|n| &n.id == id).map(|n| (n.at, *pos))
+                    })
                     .collect()
             })
             .unwrap_or_default();
@@ -1248,6 +1255,26 @@ mod tests {
         assert_eq!(hints::hints(&a).title, "Drawing a wire");
         keys(&mut a, &ctx, "<Esc> b<Enter>");
         assert_eq!(hints::hints(&a).title, "Typing a label");
+    }
+
+    #[test]
+    fn lines_under_the_cursor_and_per_node() {
+        let (mut a, ctx) = app(Figure::Block(Block::default()));
+        // Two blocks, then a feedback line from the second back to the first, one row down.
+        keys(&mut a, &ctx, " k<Enter> k<Enter>hwj<Enter>h<Enter>k<Enter>");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        assert_eq!(b.edges.len(), 2);
+        // Cursor onto the feedback line's lower row: c edits that line.
+        keys(&mut a, &ctx, "<Esc>j");
+        assert_eq!(block::under_cursor(&a), Some(Item::Wire(1)));
+        keys(&mut a, &ctx, "-");
+        let Figure::Block(b) = &a.fig else { panic!() };
+        assert_eq!(b.edges[1].sign, "-");
+        // On the first block, Tab walks only its lines.
+        keys(&mut a, &ctx, "k<Tab>");
+        assert_eq!(a.sel, vec![Item::Wire(0)]);
+        keys(&mut a, &ctx, "<Tab>");
+        assert_eq!(a.sel, vec![Item::Wire(1)]);
     }
 
     #[test]

@@ -38,6 +38,19 @@
       items.push(node(pos, mark(n, node-body(n, laplace)), shape: rect, name: name))
     }
   }
+  // Editor mode: invisible markers on every cell of the used range, so the editor knows
+  // where rows and columns without nodes (e.g. feedback lines) really are.
+  if editor and nodes.len() > 0 {
+    let cells = nodes.map(n => cell(n.at("at")))
+    for e in data.at("edges", default: ()) { cells += e.at("bends", default: ()).map(cell) }
+    let (xs, ys) = (cells.map(c => c.at(0)), cells.map(c => c.at(1)))
+    for x in range(calc.min(..xs), calc.max(..xs) + 1) {
+      for y in range(calc.min(..ys), calc.max(..ys) + 1) {
+        let id = "cell:" + str(x) + ":" + str(y)
+        items.push(node((x, y), [#metadata(id)<lecfig-node>], inset: 0pt, stroke: none, snap: false))
+      }
+    }
+  }
   for e in data.at("edges", default: ()) {
     let verts = (label(e.from), ..e.at("bends", default: ()).map(cell), label(e.to))
     // A line into a branch point ends without an arrow head; the signal continues.
