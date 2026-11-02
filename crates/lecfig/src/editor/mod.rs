@@ -1024,13 +1024,18 @@ impl App {
                 });
         }
 
-        // INSERT: one line of Typst math, applied live.
+        // INSERT: one line of Typst source, applied live.
         let mut finish: Option<bool> = None;
+        let markup = match (&self.mode, &self.fig) {
+            (Mode::Insert { target: Target::BlockNode(i), .. }, Figure::Block(b)) => b.nodes.get(*i).is_some_and(|n| n.kind == "box"),
+            _ => false,
+        };
         if let Mode::Insert { target, text, focus, .. } = &mut self.mode {
             let title = match target {
                 Target::Expr => "expression (Enter regenerates)",
                 Target::U(_) => "voltage (Typst math)",
                 Target::I(_) | Target::WireI(_) => "current (Typst math)",
+                _ if markup => "label (Typst text, $math$)",
                 _ => "label (Typst math)",
             };
             egui::Window::new(title)
@@ -1038,12 +1043,21 @@ impl App {
                 .collapsible(false)
                 .resizable(false)
                 .show(ctx, |ui| {
-                    let r = ui.add(egui::TextEdit::singleline(text).desired_width(360.0).font(egui::TextStyle::Monospace));
+                    let out = egui::TextEdit::singleline(text).desired_width(360.0).font(egui::TextStyle::Monospace).show(ui);
                     if *focus {
-                        r.request_focus();
+                        // First frame: focus and select everything, so typing replaces a default
+                        // label. Keys of this frame (e.g. the Enter that placed the part) are not
+                        // meant for this field.
+                        out.response.request_focus();
+                        let mut state = out.state;
+                        let all = egui::text_selection::CCursorRange::two(
+                            egui::text::CCursor::new(0),
+                            egui::text::CCursor::new(text.chars().count()),
+                        );
+                        state.cursor.set_char_range(Some(all));
+                        state.store(ui.ctx(), out.response.id);
                         *focus = false;
-                    }
-                    if ui.input(|i| i.key_pressed(Key::Enter)) {
+                    } else if ui.input(|i| i.key_pressed(Key::Enter)) {
                         finish = Some(true);
                     } else if ui.input(|i| i.key_pressed(Key::Escape)) {
                         finish = Some(false);
